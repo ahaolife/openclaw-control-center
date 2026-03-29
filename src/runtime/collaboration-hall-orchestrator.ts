@@ -594,6 +594,10 @@ export async function createHallTaskFromOperatorRequest(
   const taskId = normalizeTaskKey(input.taskId) || buildTaskId(input.title ?? input.content);
   const title = deriveTaskTitle(input.title ?? input.content);
   const description = input.content.trim();
+  const mentionRouting = resolveHallMentionTargets(input.content, context.hall.participants);
+  const directedMentionParticipantIds = mentionRouting.broadcastAll
+    ? []
+    : mentionRouting.targets.map((target) => target.participantId).filter(Boolean);
 
   await ensureHallProject(projectId);
 
@@ -633,7 +637,7 @@ export async function createHallTaskFromOperatorRequest(
       createdByParticipantId: authorParticipantId,
       currentOwnerParticipantId: undefined,
       currentOwnerLabel: undefined,
-      mentionedParticipantIds: [],
+      mentionedParticipantIds: directedMentionParticipantIds,
       blockers: [],
       requiresInputFrom: [],
       sessionKeys: [],
@@ -661,6 +665,8 @@ export async function createHallTaskFromOperatorRequest(
       authorParticipantId,
       authorLabel,
       content: description,
+      targetParticipantIds: directedMentionParticipantIds,
+      mentionTargets: mentionRouting.targets,
       projectId,
       taskId,
       taskCardId: taskCard.taskCardId,
@@ -702,6 +708,8 @@ export async function createHallTaskFromOperatorRequest(
       taskCard.taskCardId,
       {
         triggerMessage: initialMessage,
+        explicitTargetParticipantIds: directedMentionParticipantIds,
+        strictMentions: directedMentionParticipantIds.length > 0,
         toolClient: options.toolClient,
       },
     );
@@ -2388,7 +2396,7 @@ async function runHallDiscussion(
         break;
       }
       spokenParticipantIds.add(participant.participantId);
-      if (participant.semanticRole === "manager") {
+      if (participant.semanticRole === "manager" && explicitQueue.length === 0) {
         break;
       }
     }

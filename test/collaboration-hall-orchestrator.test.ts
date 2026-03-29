@@ -2798,6 +2798,70 @@ test("runtime-backed hall discussion defaults to two distinct agent replies when
   }
 });
 
+test("runtime-backed hall discussion honors explicit @mentions on the very first operator task", async () => {
+  const backups = await backupFiles([
+    COLLABORATION_HALLS_PATH,
+    COLLABORATION_HALL_MESSAGES_PATH,
+    COLLABORATION_TASK_CARDS_PATH,
+    COLLABORATION_HALL_SUMMARIES_PATH,
+    PROJECTS_PATH,
+    TASKS_PATH,
+    CHAT_ROOMS_PATH,
+    CHAT_MESSAGES_PATH,
+  ]);
+
+  try {
+    const client = new FakeRuntimeToolClient();
+    client.queueResponse({
+      ok: true,
+      status: "ok",
+      text: "我先从视频目标和叙事顺序收一下。<hall-structured>{\"proposal\":\"先锁视频要证明什么。\",\"nextAction\":\"continue\"}</hall-structured>",
+      rawText: "ok",
+      sessionKey: "agent:main:hall",
+      sessionId: "main-session",
+    });
+    client.queueResponse({
+      ok: true,
+      status: "ok",
+      text: "我补一个代码和执行视角，先看 hall-chat 现在已经能展示什么。",
+      rawText: "ok",
+      sessionKey: "agent:pandas:hall",
+      sessionId: "pandas-session",
+    });
+
+    const created = await createHallTaskFromOperatorRequest({
+      content: "@main @pandas 我想要做一个视频 介绍我的群聊功能。",
+    }, {
+      toolClient: client,
+    });
+    assert(created.taskCard);
+    assert.deepEqual(created.taskCard?.mentionedParticipantIds, ["main", "pandas"]);
+
+    await waitForHallBackgroundWork();
+
+    const hall = await readCollaborationHall();
+    const taskMessages = hall.messages.filter((message) => message.taskCardId === created.taskCard?.taskCardId);
+    const agentReplies = taskMessages.filter((message) => message.authorParticipantId !== "operator" && message.kind !== "system");
+    const distinctAuthors = [...new Set(agentReplies.map((message) => message.authorParticipantId))];
+    assert.deepEqual(distinctAuthors, ["main", "pandas"]);
+
+    const initialTaskMessage = taskMessages.find((message) => message.authorParticipantId === "operator");
+    assert(initialTaskMessage);
+    assert.deepEqual(initialTaskMessage.targetParticipantIds, ["main", "pandas"]);
+    assert.deepEqual(
+      (initialTaskMessage.mentionTargets ?? []).map((target) => target.participantId),
+      ["main", "pandas"],
+    );
+
+    const runtimeCalls = client.agentRunStreamCalls.length > 0 ? client.agentRunStreamCalls : client.agentRunCalls;
+    assert.equal(runtimeCalls.length >= 2, true);
+    assert.equal(runtimeCalls[0]?.agentId, "main");
+    assert.equal(runtimeCalls[1]?.agentId, "pandas");
+  } finally {
+    await restoreFiles(backups);
+  }
+});
+
 test("runtime-backed non-manager discussion replies do not visibly @route the next executor before assignment", async () => {
   const backups = await backupFiles([
     COLLABORATION_HALLS_PATH,
