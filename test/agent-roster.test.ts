@@ -77,3 +77,48 @@ test("agent roster stays connected from runtime when openclaw.json is missing", 
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test("agent roster ignores name-only config entries and falls back to runtime agent ids", async () => {
+  const home = await mkdtemp(join(tmpdir(), "control-center-roster-name-only-"));
+  const originalHome = process.env.OPENCLAW_HOME;
+  const originalConfigPath = process.env.OPENCLAW_CONFIG_PATH;
+
+  try {
+    await mkdir(join(home, "agents", "main"), { recursive: true });
+    await mkdir(join(home, "agents", "pandas"), { recursive: true });
+    await writeFile(
+      join(home, "openclaw.json"),
+      JSON.stringify(
+        {
+          agents: {
+            list: [
+              { name: "architect-agent" },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    process.env.OPENCLAW_HOME = home;
+    delete process.env.OPENCLAW_CONFIG_PATH;
+
+    const { loadBestEffortAgentRoster } = await import("../src/runtime/agent-roster");
+    const roster = await loadBestEffortAgentRoster();
+
+    assert.equal(roster.status, "partial");
+    assert.equal(roster.entries.length, 2);
+    assert(roster.entries.some((entry) => entry.agentId === "main"));
+    assert(roster.entries.some((entry) => entry.agentId === "pandas"));
+    assert(!roster.entries.some((entry) => entry.agentId === "architect-agent"));
+    assert.match(roster.detail, /missing id/i);
+  } finally {
+    if (originalHome === undefined) delete process.env.OPENCLAW_HOME;
+    else process.env.OPENCLAW_HOME = originalHome;
+    if (originalConfigPath === undefined) delete process.env.OPENCLAW_CONFIG_PATH;
+    else process.env.OPENCLAW_CONFIG_PATH = originalConfigPath;
+    await rm(home, { recursive: true, force: true });
+  }
+});

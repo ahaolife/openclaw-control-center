@@ -25,12 +25,16 @@ export async function loadCurrentAgentCatalog(): Promise<CurrentAgentCatalog> {
     const agents = asObject(root.agents) ?? {};
     const list = asArray(agents.list);
     const merged = new Map<string, CurrentAgentCatalogEntry>();
+    let skippedNameOnlyEntries = 0;
 
     for (const item of list) {
       const obj = asObject(item);
       if (!obj) continue;
-      const agentId = asString(obj.id)?.trim() ?? asString(obj.name)?.trim();
-      if (!agentId) continue;
+      const agentId = asString(obj.id)?.trim();
+      if (!agentId) {
+        if (asString(obj.name)?.trim()) skippedNameOnlyEntries += 1;
+        continue;
+      }
       const key = normalizeKey(agentId);
       if (merged.has(key)) continue;
       merged.set(key, {
@@ -44,7 +48,9 @@ export async function loadCurrentAgentCatalog(): Promise<CurrentAgentCatalog> {
       return {
         status: "partial",
         sourcePath,
-        detail: "openclaw.json found but agents.list is empty.",
+        detail: skippedNameOnlyEntries > 0
+          ? `openclaw.json found but ${skippedNameOnlyEntries} agent entr${skippedNameOnlyEntries === 1 ? "y is" : "ies are"} missing id.`
+          : "openclaw.json found but agents.list is empty.",
         entries: [],
       };
     }
@@ -52,7 +58,7 @@ export async function loadCurrentAgentCatalog(): Promise<CurrentAgentCatalog> {
     return {
       status: "connected",
       sourcePath,
-      detail: `loaded ${entries.length} current agent(s) from openclaw.json.`,
+      detail: `loaded ${entries.length} current agent(s) from openclaw.json.${skippedNameOnlyEntries > 0 ? ` Skipped ${skippedNameOnlyEntries} name-only entr${skippedNameOnlyEntries === 1 ? "y" : "ies"} without id.` : ""}`,
       entries,
     };
   } catch (error) {

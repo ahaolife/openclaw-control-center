@@ -118,6 +118,70 @@ test("usage-cost snapshot uses runtime session events for real requests, trends,
   assert(!usage.connectors.todos.some((item) => item.id === "context_catalog"));
 });
 
+test("usage-cost snapshot prefers runtime event history for cumulative session-type breakdown", async () => {
+  const { computeUsageCostSnapshot } = await import("../src/runtime/usage-cost");
+  const now = Date.parse("2026-04-02T12:00:00.000Z");
+
+  const usage = withFrozenNow(
+    now,
+    () =>
+      computeUsageCostSnapshot(
+        buildSnapshotFixture(),
+        [],
+        [],
+        {
+          sourceStatus: "connected",
+          sessionContexts: [
+            {
+              sessionKey: "agent:otter:feishu:thread:abc",
+              sessionId: "sid-feishu",
+              agentId: "otter",
+              totalTokens: 40,
+              channel: "feishu",
+            },
+            {
+              sessionKey: "agent:monkey:webchat:thread:xyz",
+              sessionId: "sid-webchat",
+              agentId: "monkey",
+              totalTokens: 60,
+              channel: "webchat",
+            },
+          ],
+          events: [
+            {
+              timestamp: new Date(now - 60_000).toISOString(),
+              day: "2026-04-02",
+              sessionId: "sid-feishu",
+              sessionKey: "agent:otter:feishu:thread:abc",
+              agentId: "otter",
+              model: "gpt-5.3-codex",
+              provider: "OpenAI",
+              tokens: 400,
+              cost: 4,
+            },
+            {
+              timestamp: new Date(now - 120_000).toISOString(),
+              day: "2026-04-02",
+              sessionId: "sid-webchat",
+              sessionKey: "agent:monkey:webchat:thread:xyz",
+              agentId: "monkey",
+              model: "gpt-5.3-codex",
+              provider: "OpenAI",
+              tokens: 600,
+              cost: 6,
+            },
+          ],
+        },
+      ),
+  );
+
+  const byType = usage.breakdown.bySessionType;
+  assert.equal(byType.find((item) => item.label === "飞书")?.tokens, 400);
+  assert.equal(byType.find((item) => item.label === "微信")?.tokens, 600);
+  assert.equal(byType.find((item) => item.label === "飞书")?.requests, 1);
+  assert.equal(byType.find((item) => item.label === "微信")?.requests, 1);
+});
+
 test("usage-cost snapshot surfaces connected subscription consumption and remaining contract", async () => {
   const { computeUsageCostSnapshot } = await import("../src/runtime/usage-cost");
   const usage = computeUsageCostSnapshot(buildSnapshotFixture(), [], [], undefined, {
@@ -318,11 +382,11 @@ test("usage-cost snapshot reports session-type share and cron-job share from ded
           channel: "feishu",
         },
         {
-          sessionKey: "agent:monkey:wechat:thread:xyz",
+          sessionKey: "agent:monkey:webchat:thread:xyz",
           sessionId: "sid-6",
           agentId: "monkey",
           totalTokens: 60,
-          channel: "wechat",
+          channel: "webchat",
         },
       ],
       events: [],

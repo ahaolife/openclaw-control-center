@@ -505,10 +505,10 @@ export function computeUsageCostSnapshot(
           runtime.sourceStatus,
           (event) => event.provider?.trim() || inferProvider(event.model),
         );
-  const bySessionType = buildSessionTypeBreakdownFromSessionContexts(
-    runtimeUsage?.sessionContexts ?? [],
-    runtime.sourceStatus,
-  );
+  const bySessionType =
+    runtime.sourceStatus !== "not_connected" && runtimeEvents30d.length > 0
+      ? buildSessionTypeBreakdownFromRuntimeEvents(runtimeEvents30d, runtime.sourceStatus)
+      : buildSessionTypeBreakdownFromSessionContexts(runtimeUsage?.sessionContexts ?? [], runtime.sourceStatus);
   const byCronJob = buildCronJobBreakdownFromSessionContexts(
     runtimeUsage?.sessionContexts ?? [],
     runtime.sourceStatus,
@@ -1542,10 +1542,14 @@ function classifySessionTypeLabel(
   if (
     key.includes(":weixin:") ||
     key.startsWith("weixin:") ||
+    key.includes(":webchat:") ||
+    key.startsWith("webchat:") ||
     key.includes(":wechat:") ||
     key.startsWith("wechat:") ||
+    channel.includes("webchat") ||
     channel.includes("weixin") ||
     channel.includes("wechat") ||
+    surface.includes("webchat") ||
     surface.includes("weixin") ||
     surface.includes("wechat")
   ) {
@@ -1563,7 +1567,16 @@ function classifySessionTypeFromSessionKey(
   if (key.includes(":discord:") || key.startsWith("discord:")) return "Discord";
   if (key.includes(":telegram:") || key.startsWith("telegram:")) return "Telegram";
   if (key.includes(":feishu:") || key.startsWith("feishu:")) return "飞书";
-  if (key.includes(":weixin:") || key.startsWith("weixin:") || key.includes(":wechat:") || key.startsWith("wechat:")) return "微信";
+  if (
+    key.includes(":weixin:") ||
+    key.startsWith("weixin:") ||
+    key.includes(":webchat:") ||
+    key.startsWith("webchat:") ||
+    key.includes(":wechat:") ||
+    key.startsWith("wechat:")
+  ) {
+    return "微信";
+  }
   return "Main/内部会话";
 }
 

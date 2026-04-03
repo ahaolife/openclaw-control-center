@@ -159,3 +159,48 @@ test("sessionsHistory uses bounded CLI recovery when a cached session file is un
     await rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("agentRun passes message as a flagged argument instead of positional args", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "openclaw-agent-run-"));
+  const originalPath = process.env.PATH;
+  try {
+    const cliLogPath = join(tempDir, "cli.log");
+    const binDir = await installFakeOpenClawCli(
+      tempDir,
+      cliLogPath,
+      JSON.stringify({
+        status: "ok",
+        result: {
+          payloads: [{ text: "done" }],
+          meta: {
+            agentMeta: {
+              sessionId: "session-1",
+              model: "gpt-test",
+            },
+            systemPromptReport: {
+              sessionKey: "agent:pandas:main",
+            },
+          },
+        },
+      }),
+    );
+    process.env.PATH = binDir + delimiter + (originalPath ?? "");
+
+    const client = new OpenClawLiveClient();
+    const response = await client.agentRun({
+      agentId: "pandas",
+      message: "hello from hall",
+      thinking: "minimal",
+      timeoutSeconds: 5,
+    });
+
+    assert.equal(response.ok, true);
+    assert.equal(response.text, "done");
+    const cliLog = await readFile(cliLogPath, "utf8");
+    assert.match(cliLog, /agent --agent pandas --message hello from hall --thinking minimal --timeout 5 --json/);
+    assert.doesNotMatch(cliLog, /agent pandas hello from hall/);
+  } finally {
+    process.env.PATH = originalPath;
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
