@@ -210,6 +210,7 @@ npm run dev:ui
   - `cp .env.example .env`
   - 按实际路径修改 `docker-compose.example.yml` 里的挂载和 `LOCAL_API_TOKEN`
   - `docker compose -f docker-compose.example.yml up --build`
+- Docker 镜像现在会在构建阶段预生成默认 Hall / 员工头像导出，所以 `/hall-avatars/*.png` 开箱即用。
 - 如果 Gateway 跑在宿主机上：
   - Linux Docker 建议保留 `extra_hosts: ["host.docker.internal:host-gateway"]`
   - 容器直连宿主机时，优先用 `ws://host.docker.internal:18789`
@@ -217,6 +218,11 @@ npm run dev:ui
 - 如果 UI 需要通过反向代理、局域网地址或 Tailscale 访问，再额外设置：
   - `OPENCLAW_CONTROL_UI_URL`
   - `UI_BIND_ADDRESS=0.0.0.0`
+
+## 多 Agent workspace 目录布局
+- 默认回退布局是 `<OPENCLAW_WORKSPACE_ROOT>/agents/<agentId>`。
+- 如果你的 agent 实际目录是 `workspace/a`、`workspace/b` 这种同级自定义目录，就需要在 `openclaw.json` 里给每个 agent 明确写 `workspace`。
+- 也就是说，`OPENCLAW_WORKSPACE_ROOT` 只提供共享根目录；每个 agent 的自定义目录仍然要靠各自的 `workspace` 字段来告诉控制中心。
 
 ## 安装与上手
 

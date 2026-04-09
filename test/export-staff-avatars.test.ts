@@ -74,3 +74,11 @@ test("sprite png export writes a valid PNG signature", () => {
 
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
 });
+
+test("Dockerfile bakes exported hall avatars into the image", async () => {
+  const dockerfile = await import("node:fs/promises").then((fs) => fs.readFile("Dockerfile", "utf8"));
+
+  assert.match(dockerfile, /COPY scripts \.\/scripts/);
+  assert.match(dockerfile, /RUN npm run build && npm run avatars:export/);
+  assert.match(dockerfile, /COPY --from=build \/app\/runtime \.\/runtime/);
+});

@@ -4,9 +4,10 @@ WORKDIR /app
 
 COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
+COPY scripts ./scripts
 
 RUN npm ci
-RUN npm run build
+RUN npm run build && npm run avatars:export
 
 FROM node:22-bookworm-slim
 
@@ -19,13 +20,12 @@ ENV UI_BIND_ADDRESS=0.0.0.0
 
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/runtime ./runtime
 COPY .env.example ./.env.example
 COPY README.md ./README.md
 COPY README.zh-CN.md ./README.zh-CN.md
 COPY HALL.md ./HALL.md
 COPY docs ./docs
-
-RUN mkdir -p runtime
 
 EXPOSE 4310
 

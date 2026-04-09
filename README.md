@@ -218,6 +218,7 @@ Notes:
   - `cp .env.example .env`
   - edit `docker-compose.example.yml` mount paths and `LOCAL_API_TOKEN`
   - `docker compose -f docker-compose.example.yml up --build`
+- The Docker image now pre-generates the default Hall / staff avatar exports during build, so `/hall-avatars/*.png` is available out of the box.
 - If the Gateway runs on the Docker host:
   - keep `extra_hosts: ["host.docker.internal:host-gateway"]` on Linux Docker
   - prefer `ws://host.docker.internal:18789` for direct container-to-host traffic
@@ -225,6 +226,11 @@ Notes:
 - If the UI is reached through a reverse proxy, LAN host, or Tailscale, also set:
   - `OPENCLAW_CONTROL_UI_URL`
   - `UI_BIND_ADDRESS=0.0.0.0`
+
+## Multi-agent workspace layouts
+- The default fallback layout is `<OPENCLAW_WORKSPACE_ROOT>/agents/<agentId>`.
+- If your agents actually live in sibling folders such as `workspace/a` and `workspace/b`, define each agent's `workspace` explicitly in `openclaw.json`.
+- In other words, `OPENCLAW_WORKSPACE_ROOT` gives the shared parent root; custom per-agent directories still need per-agent `workspace` entries.
 
 ## Installation and onboarding
 

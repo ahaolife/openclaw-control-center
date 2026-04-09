@@ -12,7 +12,7 @@
 
 **常见原因：** 控制中心会参考 OpenClaw 的 workspace 目录和运行时信号。是否能看到完整职责信息，通常取决于：
 - OpenClaw Gateway 返回的 session 数据中是否包含 agent 元信息
-- `OPENCLAW_AGENT_ROOT` 环境变量是否指向了正确的 workspace 目录
+- `OPENCLAW_WORKSPACE_ROOT` 和 `openclaw.json` 里的 agent `workspace` 配置是否能让控制中心找到每个 agent 的真实工作目录
 
 **解决方法：**
 
@@ -25,11 +25,34 @@
    └── MEMORY.md        # 长期记忆
    ```
 
-2. **检查环境变量：**
+2. **检查多 Agent 工作区定位方式：**
    ```bash
-   # 确保 OPENCLAW_AGENT_ROOT 指向包含所有 workspace 的父目录
-   export OPENCLAW_AGENT_ROOT=/path/to/.openclaw
+   # 标准布局：workspace/agents/<agentId>
+   export OPENCLAW_WORKSPACE_ROOT=/path/to/.openclaw/workspace
    ```
+
+   如果你的目录不是默认的 `workspace/agents/<agentId>`，而是像：
+   ```text
+   /path/to/.openclaw/workspace/a
+   /path/to/.openclaw/workspace/b
+   ```
+   那就不要只设置根目录；还需要在 `openclaw.json` 里给每个 agent 明确写出 `workspace`：
+   ```json
+   {
+     "agents": {
+       "list": [
+         { "id": "main", "workspace": "/path/to/.openclaw/workspace" },
+         { "id": "a", "workspace": "/path/to/.openclaw/workspace/a" },
+         { "id": "b", "workspace": "/path/to/.openclaw/workspace/b" }
+       ]
+     }
+   }
+   ```
+
+   **控制中心当前的规则是：**
+   - 优先使用 `openclaw.json` 里每个 agent 自己的 `workspace`
+   - 如果没写，才回退到 `<OPENCLAW_WORKSPACE_ROOT>/agents/<agentId>`
+   - 所以像 `workspace/a`、`workspace/b` 这种自定义布局，如果不写 agent 级 `workspace`，控制中心是没法凭空猜到的
 
 3. **确认 Gateway 正在运行：**
    ```bash
@@ -48,7 +71,45 @@
 
 ---
 
-### 1.1 协作大厅 / 任务房间 — 现在可以直接上传附件吗？
+### 1.1 多 Agent workspace 目录怎么识别？
+
+**直接回答：** 控制中心支持两种常见方式：
+- 默认布局：`<workspaceRoot>/agents/<agentId>`
+- 自定义布局：在 `openclaw.json` 里给每个 agent 明确写 `workspace`
+
+**如果你的目录长这样：**
+```text
+workspace/
+├── a/
+├── b/
+└── shared-files...
+```
+
+那就要显式配置：
+```json
+{
+  "agents": {
+    "list": [
+      { "id": "main", "workspace": "/abs/path/workspace" },
+      { "id": "a", "workspace": "/abs/path/workspace/a" },
+      { "id": "b", "workspace": "/abs/path/workspace/b" }
+    ]
+  }
+}
+```
+
+**不要只依赖：**
+- `OPENCLAW_WORKSPACE_ROOT=/abs/path/workspace`
+
+因为如果 agent 自己没有单独的 `workspace` 字段，控制中心会默认回退到：
+```text
+/abs/path/workspace/agents/a
+/abs/path/workspace/agents/b
+```
+
+---
+
+### 1.2 协作大厅 / 任务房间 — 现在可以直接上传附件吗？
 
 **直接回答：** 目前还**不支持**在 hall / task room 里直接上传本地文件作为消息附件。
 
@@ -176,6 +237,14 @@ openclaw sessions history <session-key> --limit 5
 3. 只有当 Gateway 前面真的有 TLS 终止层，并且证书与域名匹配时，再改成 `wss://...`
 
 > **经验判断：** 如果你现在用的是 `wss://172.x.x.x:18789/...` 这类裸 IP 地址，连不上时先不要怀疑控制中心本身，优先检查 TLS / 证书匹配和 Docker 主机映射。
+
+**快速自检：**
+```bash
+docker compose exec control-center getent hosts host.docker.internal
+docker compose exec control-center printenv GATEWAY_URL
+```
+
+如果第一条没有解析出宿主机地址，或者第二条还是 `wss://172.x.x.x:18789/...` 这类裸 IP TLS 地址，优先先改配置，再看控制中心诊断页。
 
 ---
 

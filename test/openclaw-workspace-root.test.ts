@@ -91,3 +91,35 @@ test("agent workspace root follows main root, configured workspace, then agents 
     "/srv/openclaw/workspace/agents/otter",
   );
 });
+
+test("agent workspace root honors sibling custom workspace directories from config", () => {
+  const configText = JSON.stringify({
+    agents: {
+      list: [
+        { id: "main", workspace: "/srv/openclaw/workspace" },
+        { id: "a", workspace: "/srv/openclaw/workspace/a" },
+        { id: "b", workspace: "/srv/openclaw/workspace/b" },
+      ],
+    },
+  });
+
+  assert.equal(
+    resolveOpenClawAgentWorkspaceRoot({
+      agentId: "a",
+      openclawHomeDir: "/tmp/openclaw-home/.openclaw",
+      configPath: "/tmp/openclaw-home/.openclaw/openclaw.json",
+      configText,
+    }),
+    "/srv/openclaw/workspace/a",
+  );
+
+  assert.equal(
+    resolveOpenClawAgentWorkspaceRoot({
+      agentId: "b",
+      openclawHomeDir: "/tmp/openclaw-home/.openclaw",
+      configPath: "/tmp/openclaw-home/.openclaw/openclaw.json",
+      configText,
+    }),
+    "/srv/openclaw/workspace/b",
+  );
+});

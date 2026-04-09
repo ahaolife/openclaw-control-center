@@ -276,6 +276,7 @@ const AGENT_DOCUMENT_FILE_CANDIDATES = [
 ] as const;
 const STAFF_ROLE_EVIDENCE_FILE_CANDIDATES = [
   "IDENTITY.md",
+  "SOUL.md",
   "AGENTS.md",
   "README.md",
   "MEMORY.md",
@@ -12076,9 +12077,16 @@ function extractLabeledField(input: string, labels: string[]): string | undefine
     const lower = line.toLowerCase();
     for (const label of labels) {
       const prefix = `${label.toLowerCase()}:`;
-      if (!lower.startsWith(prefix)) continue;
-      const value = line.slice(prefix.length).trim();
-      if (value) return value;
+      if (lower.startsWith(prefix)) {
+        const value = line.slice(prefix.length).trim();
+        if (value) return value;
+        continue;
+      }
+      const headingPrefix = `## ${label.toLowerCase()} `;
+      if (lower.startsWith(headingPrefix)) {
+        const value = line.slice(headingPrefix.length).trim();
+        if (value) return value;
+      }
     }
   }
   return undefined;

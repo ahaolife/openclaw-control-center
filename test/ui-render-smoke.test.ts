@@ -527,8 +527,10 @@ test("memory and workspace sections expose editable file workbenches", async () 
   assert(!source.includes('const agentProfileFiles = ["MEMORY.md", "USER.md", "SOUL.md", "IDENTITY.md"];'));
   assert(source.includes('const SHARED_DOCUMENT_FILE_CANDIDATES = ['));
   assert(source.includes('const AGENT_DOCUMENT_FILE_CANDIDATES = ['));
+  assert(source.includes('const STAFF_ROLE_EVIDENCE_FILE_CANDIDATES = ['));
   assert(source.includes('"IDENTITY.md"'));
   assert(source.includes('"SOUL.md"'));
+  assert(source.includes('const headingPrefix = `## ${label.toLowerCase()} `;'));
   assert(source.includes('"USER.md"'));
   assert(source.includes('"TASKS.md"'));
   assert(source.includes('"BOOTSTRAP.md"'));
