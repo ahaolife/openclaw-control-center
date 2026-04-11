@@ -48,6 +48,13 @@ export async function loadAvatarPreferences(): Promise<AvatarPreferencesLoadResu
     parsed = JSON.parse(raw) as unknown;
   } catch (error) {
     const fallback = defaultAvatarPreferences();
+    if (isNotFoundError(error)) {
+      return {
+        path: AVATAR_PREFERENCES_PATH,
+        preferences: fallback,
+        issues,
+      };
+    }
     const reason = error instanceof Error ? error.message : "unable to read preference file";
     issues = [`avatar preferences fallback applied: ${reason}`];
     // 只读模式：不自动创建文件，只返回默认配置
@@ -226,6 +233,15 @@ function asObject(input: unknown): Record<string, unknown> | undefined {
   if (!input || typeof input !== "object") return undefined;
   if (Array.isArray(input)) return undefined;
   return input as Record<string, unknown>;
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "ENOENT",
+  );
 }
 
 async function writeAvatarPreferences(preferences: AvatarPreferences): Promise<void> {
